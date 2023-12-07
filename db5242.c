@@ -107,7 +107,7 @@ inline int64_t low_bin_nb_arithmetic(int64_t* data, int64_t size, int64_t target
   return right;
 }
 
-inline int64_t low_bin_nb_mask(int64_t* data, int64_t size, int64_t target)
+ int64_t low_bin_nb_mask(int64_t* data, int64_t size, int64_t target)
 {
   /* this binary search variant
      (a) does no comparisons in the inner loop by using bit masking operations to convert control dependencies
@@ -124,7 +124,7 @@ inline int64_t low_bin_nb_mask(int64_t* data, int64_t size, int64_t target)
   while(left<right) {
 
      mid = (left + right) / 2;
-    printf("Middle term is: %ld\n", mid);
+
 
     // Calculate a mask based on the comparison result
     int64_t isGreaterOrEqual = (data[mid] >= target) - 1;
@@ -354,30 +354,42 @@ int64_t band_join(int64_t* inner, int64_t inner_size, int64_t* outer, int64_t ou
      arrays. The return value of the function should be the number of output results.
 
   */
-	/*int i = 0;
-	while(i<12){
+	int i = 0;
+	int extras =0;
+	/*while(i<outer_size){
 
 		printf("%d ",outer[i]);
 		i++;
 	}
 	printf("\n");
 	i=0;
-	while(i<12){
+	while(i<inner_size){
 
 		printf("%d ",inner[i]);
 		i++;
 	}  */
 	int result_count = 0; 
+	
 	for (int i = 0; i < outer_size; i += 4) {
 		int64_t keys[4];
 		for (int j = 0; j < 4; j++) {
 			if (i + j < outer_size) {
-			keys[j] = outer[i + j] - bound;
-            		}
+				keys[j] = outer[i + j] - bound;
+            		} else{
+				extras = 4-j;
+				break;
+			} 
        		}    
         	int64_t low_bounds[4];
-        	low_bin_nb_4x(inner, inner_size, keys, low_bounds);
-        	for (int j = 0; j < 4; j++) {
+		if(extras == 0) {
+        		low_bin_nb_4x(inner, inner_size, keys, low_bounds);
+		} else {
+			for(int k = 0;k<extras;k++){
+				low_bounds[k] = low_bin_nb_mask(inner,inner_size,keys[k]);
+				printf("%d\n",low_bounds[k]);
+			}
+		} 
+        	for (int j = 0; j < (4-extras); j++) {
 			int inner_index = low_bounds[j];
             		int temp_index = inner_index;
             		while (temp_index < inner_size && inner[temp_index] <= outer[i + j] + bound) {
@@ -393,7 +405,7 @@ int64_t band_join(int64_t* inner, int64_t inner_size, int64_t* outer, int64_t ou
         	}
     	}
 
-    return result_count; // Return the number of output results
+    return result_count; 
 	
 }
 
@@ -442,24 +454,23 @@ int64_t band_join_simd(int64_t* inner, int64_t inner_size, int64_t* outer, int64
         	int64_t low_bounds[4];
 		searchkey_4x = _mm256_loadu_si256((__m256i *)&keys[0]);
       		low_bin_nb_simd(inner,inner_size,searchkey_4x,(__m256i *)&low_bounds[0]);
-        	printf("123\n");
         	for (int j = 0; j < 4; j++) {
 			int inner_index = low_bounds[j];
             		int temp_index = inner_index;
             		while (temp_index < inner_size && inner[temp_index] <= outer[i + j] + bound) {
                 		if (result_count < result_size) {
-                    			outer_results[result_count] = i + j; // Index of outer table row
-                    			inner_results[result_count] = temp_index; // Index of inner table row
-                    			result_count++; // Increment the result count
+                    			outer_results[result_count] = i + j; 
+                    			inner_results[result_count] = temp_index; 
+                    			result_count++; 
                 		} else {
-                    			return result_count; // Return current output count if limit reached
+                    			return result_count; 
                 		}
 				temp_index++;
             		}
         	}
     	}
 
-    return result_count; // Return the number of output results
+    return result_count; 
 
 }
 
@@ -582,7 +593,7 @@ main(int argc, char *argv[])
 	   gettimeofday(&before,NULL);
 
 	   /* the code that you want to measure goes here; make a function call */
-	   total_results=band_join_simd(data, arraysize, outer, outer_size, inner_results, outer_results, result_size, bound);
+	   total_results=band_join(data, arraysize, outer, outer_size, inner_results, outer_results, result_size, bound);
 
 	   gettimeofday(&after,NULL);
 	   printf("Band join result size is %ld with an average of %f matches per output record\n",total_results, 1.0*total_results/(1.0+outer_results[total_results-1]));
