@@ -440,9 +440,9 @@ int64_t band_join_simd(int64_t* inner, int64_t inner_size, int64_t* outer, int64
        		}
         
         	int64_t low_bounds[4];
-		 searchkey_4x = _mm256_loadu_si256((__m256i *)&keys[i]);
-      		low_bin_nb_simd(inner,inner_size,searchkey_4x,(__m256i *)&low_bounds[i]);
-        	
+		searchkey_4x = _mm256_loadu_si256((__m256i *)&keys[0]);
+      		low_bin_nb_simd(inner,inner_size,searchkey_4x,(__m256i *)&low_bounds[0]);
+        	printf("123\n");
         	for (int j = 0; j < 4; j++) {
 			int inner_index = low_bounds[j];
             		int temp_index = inner_index;
