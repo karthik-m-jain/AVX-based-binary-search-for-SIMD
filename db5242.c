@@ -1,6 +1,6 @@
 /*
   CSE 5242 Project 2, Fall 2023
-
+  Group members - Purvi Gujarathi (gujarathi.11), Karthik Jain (jain.843), Anthony J. Petros (petros.24)
   See class project handout for more extensive documentation.
 */
 
@@ -14,120 +14,138 @@
 #include <asm/unistd.h>
 #include <immintrin.h>
 
-
 /* uncomment out the following DEBUG line for debug info, for experiment comment the DEBUG line  */
-// #define DEBUG
+//#define DEBUG
 
 /* compare two int64_t values - for use with qsort */
 static int compare(const void *p1, const void *p2)
 {
-  int a,b;
+  int a, b;
   a = *(int64_t *)p1;
   b = *(int64_t *)p2;
-  if (a<b) return -1;
-  if (a==b) return 0;
+  if (a < b)
+    return -1;
+  if (a == b)
+    return 0;
   return 1;
 }
 
 /* initialize searches and data - data is sorted and searches is a random permutation of data */
-int init(int64_t* data, int64_t* searches, int count)
+int init(int64_t *data, int64_t *searches, int count)
 {
-  for(int64_t i=0; i<count; i++){
+  int64_t i = 0;
+  for (i = 0; i < count; i++)
+  {
     searches[i] = random();
-    data[i] = searches[i]+1;
+    data[i] = searches[i] + 1;
   }
-  qsort(data,count,sizeof(int64_t),compare);
+  qsort(data, count, sizeof(int64_t), compare);
 }
 
 /* initialize outer probes of band join */
-int band_init(int64_t* outer, int64_t size)
+int band_init(int64_t *outer, int64_t size)
 {
-  for(int64_t i=0; i<size; i++){
+  int64_t i = 0;
+  for (i = 0; i < size; i++)
+  {
     outer[i] = random();
   }
 }
 
-inline int64_t simple_binary_search(int64_t* data, int64_t size, int64_t target)
+inline int64_t simple_binary_search(int64_t *data, int64_t size, int64_t target)
 {
-  int64_t left=0;
-  int64_t right=size;
+  int64_t left = 0;
+  int64_t right = size;
   int64_t mid;
 
-  while(left<=right) {
-    mid = (left + right)/2;   /* ignore possibility of overflow of left+right */
-    if (data[mid]==target) return mid;
-    if (data[mid]<target) left=mid+1;
-    else right = mid-1;
+  while (left <= right)
+  {
+    mid = (left + right) / 2; /* ignore possibility of overflow of left+right */
+    if (data[mid] == target)
+      return mid;
+    if (data[mid] < target)
+      left = mid + 1;
+    else
+      right = mid - 1;
   }
   return -1; /* no match */
 }
 
-inline int64_t low_bin_search(int64_t* data, int64_t size, int64_t target)
+inline int64_t low_bin_search(int64_t *data, int64_t size, int64_t target)
 {
   /* this binary search variant
      (a) does only one comparison in the inner loop
      (b) doesn't require an exact match; instead it returns the index of the first key >= the search key.
          That's good in a DB context where we might be doing a range search, and using binary search to
-	 identify the first key in the range.
+   identify the first key in the range.
      (c) If the search key is bigger than all keys, it returns size.
   */
-  int64_t left=0;
-  int64_t right=size;
+  int64_t left = 0;
+  int64_t right = size;
   int64_t mid;
 
-  while(left<right) {
-    mid = (left + right)/2;   /* ignore possibility of overflow of left+right */
-    if (data[mid]>=target)
-      right=mid;
+  while (left < right)
+  {
+    mid = (left + right) / 2; /* ignore possibility of overflow of left+right */
+    if (data[mid] >= target)
+      right = mid;
     else
-      left=mid+1;
+      left = mid + 1;
   }
   return right;
 }
 
-inline int64_t low_bin_nb_arithmetic(int64_t* data, int64_t size, int64_t target)
+inline int64_t low_bin_nb_arithmetic(int64_t *data, int64_t size, int64_t target)
 {
   /* this binary search variant
      (a) does no comparisons in the inner loop by using multiplication and addition to convert control dependencies
          to data dependencies
      (b) doesn't require an exact match; instead it returns the index of the first key >= the search key.
          That's good in a DB context where we might be doing a range search, and using binary search to
-	 identify the first key in the range.
+   identify the first key in the range.
      (c) If the search key is bigger than all keys, it returns size.
   */
-  int64_t left=0;
-  int64_t right=size;
+  int64_t left = 0;
+  int64_t right = size;
   int64_t mid;
 
-  while(left<right) {
+  while (left < right)
+  {
 
     /* YOUR CODE HERE */
-
+    mid = (left + right) / 2;
+    
+    int64_t isGreaterOrEqual = (data[mid] >= target); // 1 if true, 0 if false
+    // Calculate left right values by multiplying by 1 or 0
+    left = ((1 - isGreaterOrEqual) * (mid + 1)) + (isGreaterOrEqual * left); // If 0 update left else value of left should be unchanged
+    right = ((1-  isGreaterOrEqual) * right) +  (isGreaterOrEqual * mid); // If 1 update right else value of right should be unchanged
+    
   }
   return right;
 }
 
- int64_t low_bin_nb_mask(int64_t* data, int64_t size, int64_t target)
+inline int64_t low_bin_nb_mask(int64_t *data, int64_t size, int64_t target)
 {
   /* this binary search variant
      (a) does no comparisons in the inner loop by using bit masking operations to convert control dependencies
          to data dependencies
      (b) doesn't require an exact match; instead it returns the index of the first key >= the search key.
          That's good in a DB context where we might be doing a range search, and using binary search to
-	 identify the first key in the range.
+   identify the first key in the range.
      (c) If the search key is bigger than all keys, it returns size.
   */
-  int64_t left=0;
-  int64_t right=size;
+  int64_t left = 0;
+  int64_t right = size;
   int64_t mid;
 
-  while(left<right) {
-
-     mid = (left + right) / 2;
-
+  while (left < right)
+  {
+    //Sources referred: 1. To perform condition using bitwise operators - https://itecnote.com/tecnote/conditional-using-bitwise-operators/
+    /* YOUR CODE HERE */
+    mid = (left + right) / 2;
 
     // Calculate a mask based on the comparison result
-    int64_t isGreaterOrEqual = (data[mid] >= target) - 1;
+    int64_t isGreaterOrEqual = (data[mid] >= target) - 1; // if mid>target -1 else 0 
     left = (left & ~isGreaterOrEqual) | ((mid + 1) & isGreaterOrEqual);
     right = (mid & ~isGreaterOrEqual) | (right & isGreaterOrEqual);
 
@@ -135,7 +153,7 @@ inline int64_t low_bin_nb_arithmetic(int64_t* data, int64_t size, int64_t target
   return right;
 }
 
- void low_bin_nb_4x(int64_t *data, int64_t size, int64_t *targets, int64_t *right)
+inline void low_bin_nb_4x(int64_t *data, int64_t size, int64_t *targets, int64_t *right)
 {
   /* this binary search variant
      (a) does no comparisons in the inner loop by using bit masking operations instead
@@ -163,17 +181,10 @@ inline int64_t low_bin_nb_arithmetic(int64_t* data, int64_t size, int64_t target
       {
         mid[done] = (left[done] + right[done]) / 2;
 
-
         // Calculate a mask based on the comparison result
         int64_t isGreaterOrEqual = (data[mid[done]] >= targets[done]) - 1;
         left[done] = (left[done] & ~isGreaterOrEqual) | ((mid[done] + 1) & isGreaterOrEqual);
         right[done] = (mid[done] & ~isGreaterOrEqual) | (right[done] & isGreaterOrEqual);
-
-        #ifdef DEBUG
-          printf("isGreaterOrEqual is %ld\n", isGreaterOrEqual);
-          printf("left is %ld\n", left[done]);
-          printf("right is %ld\n", right[done]);
-        #endif
       }
       else
       {
@@ -189,19 +200,19 @@ inline int64_t low_bin_nb_arithmetic(int64_t* data, int64_t size, int64_t target
   }
 }
 
-
-
 /* The following union type is handy to output the contents of AVX512 data types */
-union int8x4 {
+union int8x4
+{
   __m256i a;
   int64_t b[4];
 };
 
-void printavx(char* name, __m256i v) {
+void printavx(char *name, __m256i v)
+{
   union int8x4 n;
 
-  n.a=v;
-  printf("Value in %s is [%ld %ld %ld %ld ]\n",name,n.b[0],n.b[1],n.b[2],n.b[3]);
+  n.a = v;
+  printf("Value in %s is [%ld %ld %ld %ld ]\n", name, n.b[0], n.b[1], n.b[2], n.b[3]);
 }
 
 /*
@@ -221,14 +232,13 @@ void printavx(char* name, __m256i v) {
 
  */
 
-
- void low_bin_nb_simd(int64_t* data, int64_t size, __m256i target, __m256i* result)
+inline void low_bin_nb_simd(int64_t *data, int64_t size, __m256i target, __m256i *result)
 {
   /* this binary search variant
      (a) does no comparisons in the inner loop by using bit masking operations instead
      (b) doesn't require an exact match; instead it returns the index of the first key >= the search key.
          That's good in a DB context where we might be doing a range search, and using binary search to
-	 identify the first key in the range.
+   identify the first key in the range.
      (c) If the search key is bigger than all keys, it returns size.
      (d) does 4 searches at the same time using AVX2 intrinsics
 
@@ -243,37 +253,38 @@ void printavx(char* name, __m256i v) {
   __m256i aright = _mm256_set1_epi64x(size);
   __m256i amid;
 
-
   __m256i ones = _mm256_set1_epi64x(1);
   __m256i amask;
   __m256i datavec;
 
- /* YOUR CODE HERE */
+  /* YOUR CODE HERE */
+  // Sources referred : 1. To load the data at specific index - https://stackoverflow.com/questions/51128005/what-do-you-do-without-fast-gather-and-scatter-in-avx2-instructions
+  // 2. To compare right>left - https://cpp.hotexamples.com/examples/-/-/_mm256_cmpgt_epi64/cpp-_mm256_cmpgt_epi64-function-examples.html 
 
-while (_mm256_movemask_epi8(_mm256_cmpgt_epi64(aright, aleft)) != 0) {
+  while (_mm256_movemask_epi8(_mm256_cmpgt_epi64(aright, aleft)) != 0) { // Compare right and left 
 
-    // Calculate amid
     amid = _mm256_srli_epi64(_mm256_add_epi64(aleft, aright), 1);
 
     // Load the data at the amid index
     datavec = _mm256_i64gather_epi64(data,amid,8);
 
-    // Compare target and datavec
+    // Compare target and value at amid
     amask = _mm256_cmpgt_epi64(target,datavec);
 
+    //Update left and right based on mask
     aleft = _mm256_or_si256(_mm256_andnot_si256(amask, aleft),_mm256_and_si256(amask, _mm256_add_epi64(amid, ones)));
-
     aright = _mm256_or_si256(_mm256_andnot_si256(amask, amid),_mm256_and_si256(amask, aright));
 
   }
 
   *result = aright;
-
 }
 
-void bulk_bin_search(int64_t* data, int64_t size, int64_t* searchkeys, int64_t numsearches, int64_t* results, int repeats)
+void bulk_bin_search(int64_t *data, int64_t size, int64_t *searchkeys, int64_t numsearches, int64_t *results, int repeats)
 {
-  for(int j=0; j<repeats; j++) {
+  int j = 0;
+  for (j = 0; j < repeats; j++)
+  {
     /* Function to test a large number of binary searches
 
        we might need repeats>1 to make sure the events we're measuring are not dominated by various
@@ -281,28 +292,31 @@ void bulk_bin_search(int64_t* data, int64_t size, int64_t* searchkeys, int64_t n
 
        we assume that we want exactly "size" searches, where "size" is the length if the searchkeys array
      */
-    for(int64_t i=0;i<numsearches; i++) {
+    int64_t i = 0;
+    for (i = 0; i < numsearches; i++)
+    {
 #ifdef DEBUG
-      printf("Searching for %ld...\n",searchkeys[i]);
+      printf("Searching for %ld...\n", searchkeys[i]);
 #endif
 
       // Uncomment one of the following to measure it
-      //results[i] = low_bin_search(data,size,searchkeys[i]);
+      results[i] = low_bin_search(data,size,searchkeys[i]);
       //results[i] = low_bin_nb_arithmetic(data,size,searchkeys[i]);
-      //results[i] = low_bin_nb_mask(data,size,searchkeys[i]);
+      //results[i] = low_bin_nb_mask(data, size, searchkeys[i]);
 
 #ifdef DEBUG
-      printf("Result is %ld\n",results[i]);
+      printf("Result is %ld\n", results[i]);
 #endif
     }
   }
 }
 
-void bulk_bin_search_4x(int64_t* data, int64_t size, int64_t* searchkeys, int64_t numsearches, int64_t* results, int repeats)
+void bulk_bin_search_4x(int64_t *data, int64_t size, int64_t *searchkeys, int64_t numsearches, int64_t *results, int repeats)
 {
   register __m256i searchkey_4x;
-
-  for(int j=0; j<repeats; j++) {
+  int j = 0;
+  for (j = 0; j < repeats; j++)
+  {
     /* Function to test a large number of binary searches using one of the 8x routines
 
        we might need repeats>1 to make sure the events we're measuring are not dominated by various
@@ -311,38 +325,39 @@ void bulk_bin_search_4x(int64_t* data, int64_t size, int64_t* searchkeys, int64_
        we assume that we want exactly "size" searches, where "size" is the length if the searchkeys array
      */
     int64_t extras = numsearches % 4;
-    for(int64_t i=0;i<numsearches-extras; i+=4) {
-#ifdef DEBUG
-      printf("Searching for %ld %ld %ld %ld  ...\n",
-	     searchkeys[i],searchkeys[i+1],searchkeys[i+2],searchkeys[i+3]);
-#endif
+    int64_t i = 0;
+    for (i = 0; i < numsearches - extras; i += 4)
+    {
+      #ifdef DEBUG
+        printf("Searching for %ld %ld %ld %ld  ...\n",
+              searchkeys[i], searchkeys[i + 1], searchkeys[i + 2], searchkeys[i + 3]);
+      #endif
 
       // Uncomment one of the following depending on which routine you want to profile
 
       // Algorithm A
-       //low_bin_nb_4x(data,size,&searchkeys[i],&results[i]);
+      //low_bin_nb_4x(data, size, &searchkeys[i], &results[i]);
 
       // Algorithm B
-      // searchkey_4x = _mm256_loadu_si256((__m256i *)&searchkeys[i]);
-      // low_bin_nb_simd(data,size,searchkey_4x,(__m256i *)&results[i]);
+      searchkey_4x = _mm256_loadu_si256((__m256i *)&searchkeys[i]);
+      low_bin_nb_simd(data,size,searchkey_4x,(__m256i *)&results[i]);
 
-#ifdef DEBUG
-      printf("Result is %ld %ld %ld %ld  ...\n",
-	     results[i],results[i+1],results[i+2],results[i+3]);
-#endif
+      #ifdef DEBUG
+        printf("Result is %ld %ld %ld %ld  ...\n",
+              results[i], results[i + 1], results[i + 2], results[i + 3]);
+      #endif
     }
     /* a little bit more work if numsearches is not a multiple of 8 */
-    for(int64_t i=numsearches-extras;i<numsearches; i++) {
+    int64_t j;
+    for (j = numsearches - extras; j < numsearches; j++)
+    {
 
-      //results[i] = low_bin_nb_mask(data,size,searchkeys[i]);
-
+      results[j] = low_bin_nb_mask(data, size, searchkeys[j]);
     }
-
   }
 }
 
-
-int64_t band_join(int64_t* inner, int64_t inner_size, int64_t* outer, int64_t outer_size, int64_t* inner_results, int64_t* outer_results, int64_t result_size, int64_t bound)
+int64_t band_join(int64_t *inner, int64_t inner_size, int64_t *outer, int64_t outer_size, int64_t *inner_results, int64_t *outer_results, int64_t result_size, int64_t bound)
 {
   /* In a band join we want matches within a range of values.  If p is the probe value from the outer table, then all
      reccords in the inner table with a key in the range [p-bound,p+bound] inclusive should be part of the result.
@@ -354,25 +369,17 @@ int64_t band_join(int64_t* inner, int64_t inner_size, int64_t* outer, int64_t ou
      arrays. The return value of the function should be the number of output results.
 
   */
+
+  /* YOUR CODE HERE */
 	int i = 0;
 	int extras =0;
-	/*while(i<outer_size){
 
-		printf("%d ",outer[i]);
-		i++;
-	}
-	printf("\n");
-	i=0;
-	while(i<inner_size){
-
-		printf("%d ",inner[i]);
-		i++;
-	}  */
 	int result_count = 0; 
 	
-	for (int i = 0; i < outer_size; i += 4) {
+	for (i = 0; i < outer_size; i += 4) {
 		int64_t keys[4];
-		for (int j = 0; j < 4; j++) {
+    int j=0;
+		for (j = 0; j < 4; j++) {
 			if (i + j < outer_size) {
 				keys[j] = outer[i + j] - bound;
             		} else{
@@ -384,12 +391,14 @@ int64_t band_join(int64_t* inner, int64_t inner_size, int64_t* outer, int64_t ou
 		if(extras == 0) {
         		low_bin_nb_4x(inner, inner_size, keys, low_bounds);
 		} else {
-			for(int k = 0;k<extras;k++){
+      int k=0;
+			for(k = 0;k<extras;k++){
 				low_bounds[k] = low_bin_nb_mask(inner,inner_size,keys[k]);
-				printf("%d\n",low_bounds[k]);
+				//printf("%d\n",low_bounds[k]);
 			}
 		} 
-        	for (int j = 0; j < (4-extras); j++) {
+          j=0;
+        	for (j = 0; j < (4-extras); j++) {
 			int inner_index = low_bounds[j];
             		int temp_index = inner_index;
             		while (temp_index < inner_size && inner[temp_index] <= outer[i + j] + bound) {
@@ -406,10 +415,11 @@ int64_t band_join(int64_t* inner, int64_t inner_size, int64_t* outer, int64_t ou
     	}
 
     return result_count; 
-	
+
+
 }
 
-int64_t band_join_simd(int64_t* inner, int64_t inner_size, int64_t* outer, int64_t outer_size, int64_t* inner_results, int64_t* outer_results, int64_t result_size, int64_t bound)
+int64_t band_join_simd(int64_t *inner, int64_t inner_size, int64_t *outer, int64_t outer_size, int64_t *inner_results, int64_t *outer_results, int64_t result_size, int64_t bound)
 {
   /* In a band join we want matches within a range of values.  If p is the probe value from the outer table, then all
      reccords in the inner table with a key in the range [p-bound,p+bound] inclusive should be part of the result.
@@ -428,24 +438,14 @@ int64_t band_join_simd(int64_t* inner, int64_t inner_size, int64_t* outer, int64
      This inner scanning code does not have to use SIMD.
   */
 
-    /* int i = 0;
-	while(i<12){
-
-		printf("%d ",outer[i]);
-		i++;
-	}
-	printf("\n");
-	i=0;
-	while(i<12){
-
-		printf("%d ",inner[i]);
-		i++;
-	}  */
+  /* YOUR CODE HERE */
 	register __m256i searchkey_4x;
 	int result_count = 0; 
-	for (int i = 0; i < outer_size; i += 4) {
+  int i=0; 
+	for (i = 0; i < outer_size; i += 4) {
 		int64_t keys[4];
-		for (int j = 0; j < 4; j++) {
+    int j=0;
+		for (j = 0; j < 4; j++) {
 			if (i + j < outer_size) {
 			keys[j] = outer[i + j] - bound; // Adjust keys for search
             		}
@@ -454,157 +454,158 @@ int64_t band_join_simd(int64_t* inner, int64_t inner_size, int64_t* outer, int64
         	int64_t low_bounds[4];
 		searchkey_4x = _mm256_loadu_si256((__m256i *)&keys[0]);
       		low_bin_nb_simd(inner,inner_size,searchkey_4x,(__m256i *)&low_bounds[0]);
-        	for (int j = 0; j < 4; j++) {
+        	printf("123\n");
+          j=0;
+        	for (j = 0; j < 4; j++) {
 			int inner_index = low_bounds[j];
             		int temp_index = inner_index;
             		while (temp_index < inner_size && inner[temp_index] <= outer[i + j] + bound) {
                 		if (result_count < result_size) {
-                    			outer_results[result_count] = i + j; 
-                    			inner_results[result_count] = temp_index; 
-                    			result_count++; 
+                    			outer_results[result_count] = i + j; // Index of outer table row
+                    			inner_results[result_count] = temp_index; // Index of inner table row
+                    			result_count++; // Increment the result count
                 		} else {
-                    			return result_count; 
+                    			return result_count; // Return current output count if limit reached
                 		}
 				temp_index++;
             		}
         	}
     	}
 
-    return result_count; 
+    return result_count; // Return the number of output results
 
 }
 
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
-	 long long counter;
-	 int64_t arraysize, outer_size, result_size;
-	 int64_t bound;
-	 int64_t *data, *queries, *results;
-	 int ret;
-	 struct timeval before, after;
-	 int repeats;
-	 int64_t total_results;
+  long long counter;
+  int64_t arraysize, outer_size, result_size;
+  int64_t bound;
+  int64_t *data, *queries, *results;
+  int ret;
+  struct timeval before, after;
+  int repeats;
+  int64_t total_results;
 
-	 // band-join arrays
-	 int64_t *outer, *outer_results, *inner_results;
+  // band-join arrays
+  int64_t *outer, *outer_results, *inner_results;
 
+  if (argc >= 5)
+  {
+    arraysize = atoi(argv[1]);
+    outer_size = atoi(argv[2]);
+    result_size = atoi(argv[3]);
+    bound = atoi(argv[4]);
+  }
+  else
+  {
+    fprintf(stderr, "Usage: db5242 inner_size outer_size result_size bound <repeats>\n");
+    exit(EXIT_FAILURE);
+  }
 
-	 if (argc >= 5)
-	   {
-	     arraysize = atoi(argv[1]);
-	     outer_size = atoi(argv[2]);
-	     result_size = atoi(argv[3]);
-	     bound = atoi(argv[4]);
-	   }
-	 else
-	   {
-	     fprintf(stderr, "Usage: db5242 inner_size outer_size result_size bound <repeats>\n");
-	     exit(EXIT_FAILURE);
-	   }
+  if (argc >= 6)
+    repeats = atoi(argv[5]);
+  else
+  {
+    repeats = 1;
+  }
 
-	 if (argc >= 6)
-	   repeats = atoi(argv[5]);
-	 else
-	   {
-	     repeats=1;
-	   }
+  /* allocate the array and the queries for searching */
+  ret = posix_memalign((void **)&data, 64, arraysize * sizeof(int64_t));
+  if (ret)
+  {
+    fprintf(stderr, "Memory allocation error.\n");
+    exit(EXIT_FAILURE);
+  }
+  ret = posix_memalign((void **)&queries, 64, arraysize * sizeof(int64_t));
+  if (ret)
+  {
+    fprintf(stderr, "Memory allocation error.\n");
+    exit(EXIT_FAILURE);
+  }
+  ret = posix_memalign((void **)&results, 64, arraysize * sizeof(int64_t));
+  if (ret)
+  {
+    fprintf(stderr, "Memory allocation error.\n");
+    exit(EXIT_FAILURE);
+  }
 
-	 /* allocate the array and the queries for searching */
-	 ret=posix_memalign((void**) &data,64,arraysize*sizeof(int64_t));
-	 if (ret)
-	 {
-	   fprintf(stderr, "Memory allocation error.\n");
-	   exit(EXIT_FAILURE);
-	 }
-	 ret=posix_memalign((void**) &queries,64,arraysize*sizeof(int64_t));
-	 if (ret)
-	 {
-	   fprintf(stderr, "Memory allocation error.\n");
-	   exit(EXIT_FAILURE);
-	 }
-	 ret=posix_memalign((void**) &results,64,arraysize*sizeof(int64_t));
-	 if (ret)
-	 {
-	   fprintf(stderr, "Memory allocation error.\n");
-	   exit(EXIT_FAILURE);
-	 }
+  /* allocate the outer array and output arrays for band-join */
+  ret = posix_memalign((void **)&outer, 64, outer_size * sizeof(int64_t));
+  if (ret)
+  {
+    fprintf(stderr, "Memory allocation error.\n");
+    exit(EXIT_FAILURE);
+  }
+  ret = posix_memalign((void **)&outer_results, 64, result_size * sizeof(int64_t));
+  if (ret)
+  {
+    fprintf(stderr, "Memory allocation error.\n");
+    exit(EXIT_FAILURE);
+  }
+  ret = posix_memalign((void **)&inner_results, 64, result_size * sizeof(int64_t));
+  if (ret)
+  {
+    fprintf(stderr, "Memory allocation error.\n");
+    exit(EXIT_FAILURE);
+  }
 
-	 /* allocate the outer array and output arrays for band-join */
-	 ret=posix_memalign((void**) &outer,64,outer_size*sizeof(int64_t));
-	 if (ret)
-	 {
-	   fprintf(stderr, "Memory allocation error.\n");
-	   exit(EXIT_FAILURE);
-	 }
-	 ret=posix_memalign((void**) &outer_results,64,result_size*sizeof(int64_t));
-	 if (ret)
-	 {
-	   fprintf(stderr, "Memory allocation error.\n");
-	   exit(EXIT_FAILURE);
-	 }
-	 ret=posix_memalign((void**) &inner_results,64,result_size*sizeof(int64_t));
-	 if (ret)
-	 {
-	   fprintf(stderr, "Memory allocation error.\n");
-	   exit(EXIT_FAILURE);
-	 }
-
-
-	   /* code to initialize data structures goes here so that it is not included in the timing measurement */
-	   init(data,queries,arraysize);
-	   band_init(outer,outer_size);
+  /* code to initialize data structures goes here so that it is not included in the timing measurement */
+  init(data, queries, arraysize);
+  band_init(outer, outer_size);
 
 #ifdef DEBUG
-	   /* show the arrays */
-	   printf("data: ");
-	   for(int64_t i=0;i<arraysize;i++) printf("%ld ",data[i]);
-	   printf("\n");
-	   printf("queries: ");
-	   for(int64_t i=0;i<arraysize;i++) printf("%ld ",queries[i]);
-	   printf("\n");
-	   printf("outer: ");
-	   for(int64_t i=0;i<outer_size;i++) printf("%ld ",outer[i]);
-	   printf("\n");
-#endif
+  /* show the arrays */
+    printf("data: ");
+    int64_t i = 0;
+    for (i = 0; i < arraysize; i++)
+      printf("%ld ", data[i]);
+    printf("\n");
+    printf("queries: ");
+    i = 0;
+    for (i = 0; i < arraysize; i++)
+      printf("%ld ", queries[i]);
+    printf("\n");
+    printf("outer: ");
+    i = 0;
+    for (i = 0; i < outer_size; i++)
+      printf("%ld ", outer[i]);
+    printf("\n");
+  #endif
 
+  /* now measure... */
 
-	   /* now measure... */
+  gettimeofday(&before, NULL);
 
-	   gettimeofday(&before,NULL);
+  /* the code that you want to measure goes here; make a function call */
+  bulk_bin_search(data, arraysize, queries, arraysize, results, repeats);
 
-	   /* the code that you want to measure goes here; make a function call */
-	   bulk_bin_search(data,arraysize,queries,arraysize,results, repeats);
+  gettimeofday(&after, NULL);
+  printf("Time in bulk_bin_search loop is %ld microseconds or %f microseconds per search\n", (after.tv_sec - before.tv_sec) * 1000000 + (after.tv_usec - before.tv_usec), 1.0 * ((after.tv_sec - before.tv_sec) * 1000000 + (after.tv_usec - before.tv_usec)) / arraysize / repeats);
 
-	   gettimeofday(&after,NULL);
-	   printf("Time in bulk_bin_search loop is %ld microseconds or %f microseconds per search\n", (after.tv_sec-before.tv_sec)*1000000+(after.tv_usec-before.tv_usec), 1.0*((after.tv_sec-before.tv_sec)*1000000+(after.tv_usec-before.tv_usec))/arraysize/repeats);
+  gettimeofday(&before, NULL);
 
+  /* the code that you want to measure goes here; make a function call */
+  bulk_bin_search_4x(data, arraysize, queries, arraysize, results, repeats);
 
+  gettimeofday(&after, NULL);
+  printf("Time in bulk_bin_search_4x loop is %ld microseconds or %f microseconds per search\n", (after.tv_sec - before.tv_sec) * 1000000 + (after.tv_usec - before.tv_usec), 1.0 * ((after.tv_sec - before.tv_sec) * 1000000 + (after.tv_usec - before.tv_usec)) / arraysize / repeats);
 
-	   gettimeofday(&before,NULL);
+  gettimeofday(&before, NULL);
 
-	   /* the code that you want to measure goes here; make a function call */
-	   bulk_bin_search_4x(data,arraysize,queries,arraysize,results, repeats);
+  /* the code that you want to measure goes here; make a function call */
+  total_results = band_join(data, arraysize, outer, outer_size, inner_results, outer_results, result_size, bound);
 
-	   gettimeofday(&after,NULL);
-	   printf("Time in bulk_bin_search_4x loop is %ld microseconds or %f microseconds per search\n", (after.tv_sec-before.tv_sec)*1000000+(after.tv_usec-before.tv_usec), 1.0*((after.tv_sec-before.tv_sec)*1000000+(after.tv_usec-before.tv_usec))/arraysize/repeats);
+  gettimeofday(&after, NULL);
+  printf("Band join result size is %ld with an average of %f matches per output record\n", total_results, 1.0 * total_results / (1.0 + outer_results[total_results - 1]));
+  printf("Time in band_join loop is %ld microseconds or %f microseconds per outer record\n", (after.tv_sec - before.tv_sec) * 1000000 + (after.tv_usec - before.tv_usec), 1.0 * ((after.tv_sec - before.tv_sec) * 1000000 + (after.tv_usec - before.tv_usec)) / outer_size);
 
-
-	   gettimeofday(&before,NULL);
-
-	   /* the code that you want to measure goes here; make a function call */
-	   total_results=band_join(data, arraysize, outer, outer_size, inner_results, outer_results, result_size, bound);
-
-	   gettimeofday(&after,NULL);
-	   printf("Band join result size is %ld with an average of %f matches per output record\n",total_results, 1.0*total_results/(1.0+outer_results[total_results-1]));
-	   printf("Time in band_join loop is %ld microseconds or %f microseconds per outer record\n", (after.tv_sec-before.tv_sec)*1000000+(after.tv_usec-before.tv_usec), 1.0*((after.tv_sec-before.tv_sec)*1000000+(after.tv_usec-before.tv_usec))/outer_size);
-
-
-	   /* show the band_join results */
-	   printf("band_join results: ");
-	   for(int64_t i=0;i<total_results;i++) printf("(%ld,%ld) ",outer_results[i],inner_results[i]);
-	   printf("\n");
-
-
+  #ifdef DEBUG
+    /* show the band_join results */
+    printf("band_join results: ");
+    i = 0;
+    for (i = 0; i < total_results; i++)
+      printf("(%ld,%ld) ", outer_results[i], inner_results[i]);
+    printf("\n");
+  #endif
 }
-
